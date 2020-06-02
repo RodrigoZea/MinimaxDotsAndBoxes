@@ -23,59 +23,7 @@ class GameManager:
 
 vm = GameManager()
 
-def ingresarJugada(board, playerNumber, move):
-    N = 6
-
-    EMPTY = 99
-
-    acumulador = 0
-    contador = 0
-    contadorPuntos = 0
-    
-    for i in range(len(board[0])):
-        if ((i + 1) % N) != 0:
-            if board[0][i] != EMPTY and board[0][i + 1] != EMPTY and board[1][contador + acumulador] != EMPTY and board[1][contador + acumulador + 1] != EMPTY:
-                contadorPuntos = contadorPuntos + 1
-            acumulador = acumulador + N
-        else:
-            contador = contador + 1
-            acumulador = 0
-
-
-    player1 = 0
-    player2 = 0
-    FILLEDP11 = 1
-    FILLEDP12 = 2
-    FILLEDP21 = -1
-    FILLEDP22 = -2
-
-
-    for i in range(len(board[0])):
-        if board[0][i] == FILLEDP12:
-            player1 = player1 + 2
-        elif board[0][i] == FILLEDP11:
-            player1 = player1 + 1
-        elif board[0][i] == FILLEDP22:
-            player2 = player2 + 2
-        elif board[0][i] == FILLEDP21:
-            player2 = player2 + 1
-
-    for j in range(len(board[1])):
-        if board[1][j] == FILLEDP12:
-            player1 = player1 + 2
-        elif board[1][j] == FILLEDP11:
-            player1 = player1 + 1
-        elif board[1][j] == FILLEDP22:
-            player2 = player2 + 2
-        elif board[1][j] == FILLEDP21:
-            player2 = player2 + 1
-
-    if (playerNumber == 1):
-        return player1
-    else:
-        return player2
-
-def ingresarJugada(board, playerNumber, move):
+def ingresarPuntos(oldBoard, move, playerNumber):
     EMPTY = 99
     FILL = 0
     FILLEDP11 = 1
@@ -83,6 +31,68 @@ def ingresarJugada(board, playerNumber, move):
     FILLEDP21 = -1
     FILLEDP22 = -2
     N = 6
+
+    board = list(map(list, oldBoard))
+
+    punteoInicial = 0
+    punteoFinal = 0
+
+    acumulador = 0
+    contador = 0
+    multiplicador = 0
+
+    if (playerNumber == vm.currentTurnID):
+        multiplicador = 1
+    else:
+        multiplicador = -1
+
+    for i in range(len(board[0])):
+        if ((i + 1) % N) != 0:
+            if board[0][i] != EMPTY and board[0][i + 1] != EMPTY and board[1][contador + acumulador] != EMPTY and board[1][contador + acumulador + 1] != EMPTY:
+                punteoInicial = punteoInicial + 1
+            acumulador = acumulador + N
+        else:
+            contador = contador + 1
+            acumulador = 0
+
+    board[move[0]][move[1]] = FILL
+
+    acumulador = 0
+    contador = 0
+
+    for i in range(len(board[0])):
+        if ((i + 1) % N) != 0:
+            if board[0][i] != EMPTY and board[0][i + 1] != EMPTY and board[1][contador + acumulador] != EMPTY and board[1][contador + acumulador + 1] != EMPTY:
+                punteoFinal = punteoFinal + 1
+            acumulador = acumulador + N
+        else:
+            contador = contador + 1
+            acumulador = 0
+    
+    if punteoInicial < punteoFinal:
+        if playerNumber == 1:
+            if (punteoFinal - punteoInicial) == 2:
+                board[move[0]][move[1]] = FILLEDP12
+            elif (punteoFinal - punteoInicial) == 1:
+                board[move[0]][move[1]] = FILLEDP11
+        elif playerNumber == 2:
+            if (punteoFinal - punteoInicial) == 2:
+                board[move[0]][move[1]] = FILLEDP22
+            elif (punteoFinal - punteoInicial) == 1:
+                board[move[0]][move[1]] = FILLEDP21
+
+    return (punteoFinal - punteoInicial)*multiplicador
+
+def doMove(oldBoard, move, playerNumber):
+    EMPTY = 99
+    FILL = 0
+    FILLEDP11 = 1
+    FILLEDP12 = 2
+    FILLEDP21 = -1
+    FILLEDP22 = -2
+    N = 6
+
+    board = list(map(list, oldBoard))
 
     punteoInicial = 0
     punteoFinal = 0
@@ -112,46 +122,74 @@ def ingresarJugada(board, playerNumber, move):
         else:
             contador = contador + 1
             acumulador = 0
-        
-    return punteoFinal - punteoInicial
+    
+    if punteoInicial < punteoFinal:
+        if playerNumber == 1:
+            if (punteoFinal - punteoInicial) == 2:
+                board[move[0]][move[1]] = FILLEDP12
+            elif (punteoFinal - punteoInicial) == 1:
+                board[move[0]][move[1]] = FILLEDP11
+        elif playerNumber == 2:
+            if (punteoFinal - punteoInicial) == 2:
+                board[move[0]][move[1]] = FILLEDP22
+            elif (punteoFinal - punteoInicial) == 1:
+                board[move[0]][move[1]] = FILLEDP21
+    
+    return board
+
+def getPossibleMoves(board):
+    moves = []
+    for i in range(len(board)):
+        for j in range(len(board[0])):
+            if int(board[i][j]) == 99:
+                moves.append((i, j))
+
+    return moves
 
 def minimax_full(board, pos, depth, alpha, beta, maxPlayer):
-    if depth == 0 or 99 not in np.asarray(board).reshape(-1) :
-        return ingresarJugada(vm.originalBoard, vm.currentTurnID, pos)
+    idCheck = vm.currentTurnID if maxPlayer else vm.currentOpponentID
 
+    if depth == 0 or 99 not in np.asarray(board).reshape(-1):
+        return ingresarPuntos(board, pos, idCheck)
+
+    possibleMoves = getPossibleMoves(board)
+
+    # Max
     if (maxPlayer):
         maxEval = -infinity
-        for i in range(0,2):
-            for j in range(0, 30):
-                if board[i][j] == 99:
-                    board[i][j] = vm.currentTurnID
-
-                    eval = minimax_full(board, (i, j), depth - 1, alpha, beta, False)
-
-                    board[i][j] = 99
-                    
-                    maxEval = max(maxEval, eval)
-                    alpha = max(alpha, eval)
-                    if beta <= alpha:
-                        break
+        # Recorrer lista de posibles movimientos
+        for move in possibleMoves:
+            # Hacer movimiento
+            board = doMove(board, move, idCheck)
+            # Evaluar
+            eval = minimax_full(board, move, depth - 1, alpha, beta, False)
+            # Deshacer movimiento
+            board[move[0]][move[1]] = 99
+            # Nodo max
+            maxEval = max(maxEval, eval)
+            # Guardar alpha
+            alpha = max(alpha, eval)
+            if beta <= alpha:
+                break
 
         return maxEval
-
+    # Min
     else:
         minEval = infinity
-        for i in range(0,2):
-            for j in range(0, 30):
-                if board[i][j] == 99:
-                    board[i][j] = vm.currentOpponentID
-
-                    eval = minimax_full(board, (i, j), depth - 1, alpha, beta, True)
-
-                    board[i][j] = 99
-
-                    minEval = min(minEval, eval)
-                    beta = min(beta, eval)
-                    if beta <= alpha:
-                        break
+        # Recorrer lista de posibles movimientos
+        for move in possibleMoves:
+            # Hacer movimiento
+            board = doMove(board, move, idCheck)
+            # Evaluar
+            eval = minimax_full(board, move, depth - 1, alpha, beta, True)
+            # Deshacer movimiento
+            board[move[0]][move[1]] = 99
+            # Nodo min
+            minEval = min(minEval, eval)
+            # Guardar beta
+            beta = min(beta, eval)
+            if beta <= alpha:
+                break
 
         return minEval
 
@@ -315,9 +353,7 @@ def connect_error():
 def disconnect():
     print("I'm disconnected!")
 
-
 def main():
-    n = 30
     coordinatorHost = input("Coordinator fully qualified host and port: ")
     vm.tid = int(input("Tournament ID: "))
     vm.username = input("Username: ")
@@ -326,6 +362,5 @@ def main():
 
     vm.ready = False
     vm.winnerTurnID = 0
-
 
 main()
