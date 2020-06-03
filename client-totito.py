@@ -33,6 +33,8 @@ def addPoints(oldBoard, move, playerNumber):
     FILLEDP22 = -2
     N = 6
 
+    #print(str(playerNumber))
+
     board = list(map(list, oldBoard))
 
     punteoInicial = 0
@@ -43,9 +45,9 @@ def addPoints(oldBoard, move, playerNumber):
     multiplicador = 0
 
     if (playerNumber == vm.currentTurnID):
-        multiplicador = 1
-    else:
         multiplicador = -1
+    else:
+        multiplicador = 1
 
     for i in range(len(board[0])):
         if ((i + 1) % N) != 0:
@@ -92,6 +94,8 @@ def doMove(oldBoard, move, playerNumber):
     FILLEDP21 = -1
     FILLEDP22 = -2
     N = 6
+
+    #print(str(playerNumber))
 
     board = list(map(list, oldBoard))
 
@@ -140,7 +144,7 @@ def doMove(oldBoard, move, playerNumber):
 
 """ MINIMAX """
 def minimax_full(originalBoard, movement, depth, alpha, beta, maxPlayer):
-	idCheck = vm.currentGameID if maxPlayer else vm.currentOpponentID
+	idCheck = vm.currentTurnID if maxPlayer else vm.currentOpponentID
 	score = addPoints(originalBoard, movement, idCheck)
 
 	if depth == 0 or score != 0 or 99 not in np.asarray(originalBoard).reshape(-1):
@@ -278,9 +282,11 @@ def on_ready(data):
     vm.boardTiles = data['board']
     vm.originalBoard = data['board']
 
-    if (vm.currentTurnID == 1):
+    if(data['player_turn_id'] == 1):
+        vm.currentTurnID = data['player_turn_id']
         vm.currentOpponentID = 2
     else:
+        vm.currentTurnID = data['player_turn_id']
         vm.currentOpponentID = 1
 
     print(humanBoard(data['board']))
