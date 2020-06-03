@@ -23,6 +23,7 @@ class GameManager:
 
 vm = GameManager()
 
+# Gracias a David Soto por la heuristica
 """ EVERYTHING POINT RELATED """
 def addPoints(oldBoard, move, playerNumber):
     EMPTY = 99
@@ -143,6 +144,49 @@ def doMove(oldBoard, move, playerNumber):
     return board
 
 """ MINIMAX """
+# Max
+def max_m(tboard, movement, depth, alpha, beta):
+    possibleMoves = getPossibleMoves(tboard)
+    maxEval = -infinity
+
+    # Recorrer lista de posibles movimientos
+		for movement in possibleMoves:
+			# Evaluar
+			eval = minimax_full(tboard, movement, depth - 1, alpha, beta, False)
+            # Nodo max
+			maxEval = max(maxEval, eval)
+			# Guardar alpha para acelerar procesos
+			alpha = max(alpha, eval)
+
+			if beta <= alpha:
+				break
+
+    # Deshacer movimiento
+	tboard[movement[0]][movement[1]] = 99
+
+    return maxEval
+
+#Min
+def min_m(tboard, movement, depth, alpha, beta):
+    possibleMoves = getPossibleMoves(tboard)
+    minEval = infinity
+
+		# Recorrer lista de posibles movimientos
+		for movement in possibleMoves:
+			# Evaluar
+			eval = minimax_full(tboard, movement, depth - 1, alpha, beta, True)
+			# Nodo min
+			minEval = min(minEval, eval)
+			# Guardar beta para acelerar procesos
+			beta = min(beta, eval)
+			if beta <= alpha:
+				break
+
+	# Deshacer movimiento
+	tboard[movement[0]][movement[1]] = 99
+
+    return minEval
+
 def minimax_full(originalBoard, movement, depth, alpha, beta, maxPlayer):
 	idCheck = vm.currentTurnID if maxPlayer else vm.currentOpponentID
 	score = addPoints(originalBoard, movement, idCheck)
@@ -152,43 +196,14 @@ def minimax_full(originalBoard, movement, depth, alpha, beta, maxPlayer):
 
     # Hacer movimiento
 	tboard = doMove(originalBoard, movement, idCheck)
-	possibleMoves = getPossibleMoves(tboard)
-
-	# Max
+	
+    # Main minimax
+    # Si es el caso, maximizar al jugador
 	if maxPlayer:
-		maxEval = -infinity
-		# Recorrer lista de posibles movimientos
-		for movement in possibleMoves:
-			# Evaluar
-			eval = minimax_full(tboard, movement, depth - 1, alpha, beta, False)
-			# Nodo max
-			maxEval = max(maxEval, eval)
-			# Guardar alpha
-			alpha = max(alpha, eval)
-			if beta <= alpha:
-				break
-
-		# Deshacer movimiento
-		tboard[movement[0]][movement[1]] = 99
-		return maxEval
-
-	# Min
-	else:
-		minEval = infinity
-		# Recorrer lista de posibles movimientos
-		for movement in possibleMoves:
-			# Evaluar
-			eval = minimax_full(tboard, movement, depth - 1, alpha, beta, True)
-			# Nodo min
-			minEval = min(minEval, eval)
-			# Guardar beta
-			beta = min(beta, eval)
-			if beta <= alpha:
-				break
-
-		# Deshacer movimiento
-		tboard[movement[0]][movement[1]] = 99
-		return minEval
+		return max_m(tboard, movement, depth, alpha, beta)
+	# Si no, minimizar al oponente
+    else:
+		return min_m(tboard, movement, depth, alpha, beta)
 
 """ UTILITIES """
 def getPossibleMoves(board):
@@ -202,8 +217,8 @@ def getPossibleMoves(board):
 	return movements
 
 def optimize():
-	wscore = 2 * (99 * 30)
-	tscore = (99 * 30) + (99 * (30 - 1))
+	wscore = 2 * (99 * 30) 
+	tscore = (99 * 30) + (99 * (30 - 1)) #89001 
 	return [wscore, tscore]
 
 def bestMove(board):
