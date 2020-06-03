@@ -23,7 +23,8 @@ class GameManager:
 
 vm = GameManager()
 
-def ingresarPuntos(oldBoard, move, playerNumber):
+""" EVERYTHING POINT RELATED """
+def addPoints(oldBoard, move, playerNumber):
     EMPTY = 99
     FILL = 0
     FILLEDP11 = 1
@@ -137,75 +138,91 @@ def doMove(oldBoard, move, playerNumber):
     
     return board
 
+""" MINIMAX """
+def minimax_full(originalBoard, movement, depth, alpha, beta, maxPlayer):
+	idCheck = vm.currentGameID if maxPlayer else vm.currentOpponentID
+	score = addPoints(originalBoard, movement, idCheck)
+
+	if depth == 0 or score != 0 or 99 not in np.asarray(originalBoard).reshape(-1):
+		return addPoints(originalBoard, movement, idCheck)
+
+    # Hacer movimiento
+	tboard = doMove(originalBoard, movement, idCheck)
+	possibleMoves = getPossibleMoves(tboard)
+
+	# Max
+	if maxPlayer:
+		maxEval = -infinity
+		# Recorrer lista de posibles movimientos
+		for movement in possibleMoves:
+			# Evaluar
+			eval = minimax_full(tboard, movement, depth - 1, alpha, beta, False)
+			# Nodo max
+			maxEval = max(maxEval, eval)
+			# Guardar alpha
+			alpha = max(alpha, eval)
+			if beta <= alpha:
+				break
+
+		# Deshacer movimiento
+		tboard[movement[0]][movement[1]] = 99
+		return maxEval
+
+	# Min
+	else:
+		minEval = infinity
+		# Recorrer lista de posibles movimientos
+		for movement in possibleMoves:
+			# Evaluar
+			eval = minimax_full(tboard, movement, depth - 1, alpha, beta, True)
+			# Nodo min
+			minEval = min(minEval, eval)
+			# Guardar beta
+			beta = min(beta, eval)
+			if beta <= alpha:
+				break
+
+		# Deshacer movimiento
+		tboard[movement[0]][movement[1]] = 99
+		return minEval
+
+""" UTILITIES """
 def getPossibleMoves(board):
-    moves = []
-    for i in range(len(board)):
-        for j in range(len(board[0])):
-            if int(board[i][j]) == 99:
-                moves.append((i, j))
+	movements = []
 
-    return moves
+	for i in range(len(board)):
+		for j in range(len(board[0])):
+			if int(board[i][j]) == 99:
+				movements.append((i, j))
 
-def minimax_full(board, pos, depth, alpha, beta, maxPlayer):
-    idCheck = vm.currentTurnID if maxPlayer else vm.currentOpponentID
+	return movements
 
-    if depth == 0 or 99 not in np.asarray(board).reshape(-1):
-        return ingresarPuntos(board, pos, idCheck)
-
-    possibleMoves = getPossibleMoves(board)
-
-    # Max
-    if (maxPlayer):
-        maxEval = -infinity
-        # Recorrer lista de posibles movimientos
-        for move in possibleMoves:
-            # Hacer movimiento
-            board = doMove(board, move, idCheck)
-            # Evaluar
-            eval = minimax_full(board, move, depth - 1, alpha, beta, False)
-            # Deshacer movimiento
-            board[move[0]][move[1]] = 99
-            # Nodo max
-            maxEval = max(maxEval, eval)
-            # Guardar alpha
-            alpha = max(alpha, eval)
-            if beta <= alpha:
-                break
-
-        return maxEval
-    # Min
-    else:
-        minEval = infinity
-        # Recorrer lista de posibles movimientos
-        for move in possibleMoves:
-            # Hacer movimiento
-            board = doMove(board, move, idCheck)
-            # Evaluar
-            eval = minimax_full(board, move, depth - 1, alpha, beta, True)
-            # Deshacer movimiento
-            board[move[0]][move[1]] = 99
-            # Nodo min
-            minEval = min(minEval, eval)
-            # Guardar beta
-            beta = min(beta, eval)
-            if beta <= alpha:
-                break
-
-        return minEval
+def optimize():
+	wscore = 2 * (99 * 30)
+	tscore = (99 * 30) + (99 * (30 - 1))
+	return [wscore, tscore]
 
 def bestMove(board):
-    bestScore = -infinity
-    for i in range(0,2):
-            for j in range(0, 30):
-                if board[i][j] == 99:
-                    board[i][j] = vm.currentTurnID
-                    score = minimax_full(board, (i, j), 3, -infinity, infinity, False)
-                    board[i][j] = 99
-                    if (score > bestScore):
-                        bestScore = score
-                        move = (i, j)
+	best_score = -infinity
+	op_moves = []
 
-    return move
+	moves = getPossibleMoves(board)
+	t_score = int(np.sum(board))
+		 
+	if t_score in optimize():
+		return moves[0]
+	else:
+		for move in moves:
+			score = minimax_full(board, move, 1, -infinity, infinity, False)
+
+			if score > best_score:
+				best_score = score
+				moves = []
+
+			if score >= best_score:
+				moves.append(move)
+
+	return random.choice(moves)
 
 def humanBoard(board):
     resultado = ''
@@ -244,44 +261,6 @@ def humanBoard(board):
 
     return resultado
 
-def validateMovement(movement):
-    
-    if movement == []:
-        return False
-    
-    num = None
-    for conv in (int, float, complex):
-        try:
-            num = conv(movement[0])
-            break
-        except ValueError:
-            pass
-
-    if num is None:
-        return False
-
-    num = None
-    for conv in (int, float, complex):
-        try:
-            num = conv(movement[1])
-            break
-        except ValueError:
-            pass
-
-    if num is None:
-        return False    
-
-    movement = [int(movement[0]), int(movement[1])]
-
-    if movement[0] < 0 or movement[0] > 1:
-        return False
-
-    if movement[1] < 0 or movement[1] > 29:
-        return False
-
-    return True
-
-
 @sio.on('connect')
 def connect_handler():
     print("Conectado: " + vm.username)
@@ -294,30 +273,19 @@ def connect_handler():
 
 @sio.on('ready')
 def on_ready(data):
-    vm.gameFinished = False
     vm.currentGameID = data['game_id']
     vm.currentTurnID = data['player_turn_id']
+    vm.boardTiles = data['board']
+    vm.originalBoard = data['board']
 
     if (vm.currentTurnID == 1):
         vm.currentOpponentID = 2
     else:
         vm.currentOpponentID = 1
 
-    vm.boardTiles = data['board']
-    vm.originalBoard = data['board']
-
-    vm.ready = True
-
-    movement = []
-
     print(humanBoard(data['board']))
-
-    while validateMovement(movement) != True:
-        move = bestMove(vm.boardTiles)
+    movement = bestMove(vm.boardTiles)
     
-        movement = [move[0], move[1]]
-        print("Movement played: " + str(movement[0]) + ", " + str(movement[1]))
-
     sio.emit('play', {
         'tournament_id': vm.tid,
         'player_turn_id': vm.currentTurnID,
@@ -332,9 +300,9 @@ def on_finish(data):
     vm.winnerTurnID = data['winner_turn_id']
 
     if data['player_turn_id'] == data['winner_turn_id']:
-        print("Ganaste :D")
+        print("Ganaste")
     else:
-        print("Perdiste :(")
+        print("Perdiste")
 
     vm.gameFinished = True
 
